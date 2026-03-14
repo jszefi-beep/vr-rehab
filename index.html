@@ -1,0 +1,792 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>VR Vestibular Ocular Rehabilitation</title>
+  <meta name="description" content="Vestibular ocular rehabilitation exercises in VR">
+  <script src="https://aframe.io/releases/1.6.0/aframe.min.js"></script>
+  <style>
+    body { margin: 0; overflow: hidden; }
+ 
+    /* ── 2D Menu Overlay ── */
+    #menu-overlay {
+      position: fixed; inset: 0;
+      background: linear-gradient(135deg, #0c1929 0%, #0f2744 100%);
+      z-index: 999;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      font-family: 'Segoe UI', system-ui, sans-serif;
+      color: #e2e8f0;
+    }
+    #menu-overlay.hidden { display: none; }
+ 
+    .menu-title { font-size: 28px; font-weight: 700; margin-bottom: 6px; color: #38bdf8; }
+    .menu-sub { font-size: 14px; color: #64748b; margin-bottom: 30px; }
+ 
+    .menu-disclaimer {
+      max-width: 500px;
+      background: rgba(251,191,36,.1);
+      border-left: 4px solid #fbbf24;
+      padding: 12px 16px;
+      border-radius: 0 8px 8px 0;
+      font-size: 12px;
+      line-height: 1.5;
+      color: #fde68a;
+      margin-bottom: 24px;
+    }
+ 
+    .menu-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 14px;
+      max-width: 520px;
+      width: 90%;
+    }
+    .menu-card {
+      background: rgba(30,41,59,.8);
+      border: 2px solid #1e293b;
+      border-radius: 12px;
+      padding: 18px;
+      cursor: pointer;
+      transition: all .2s;
+      text-align: left;
+    }
+    .menu-card:hover { border-color: #38bdf8; transform: translateY(-2px); }
+    .menu-card-icon { font-size: 28px; margin-bottom: 8px; }
+    .menu-card-title { font-size: 15px; font-weight: 600; margin-bottom: 4px; }
+    .menu-card-desc { font-size: 11px; color: #64748b; line-height: 1.4; }
+ 
+    .menu-settings {
+      margin-top: 20px;
+      display: flex;
+      gap: 20px;
+      align-items: center;
+      flex-wrap: wrap;
+      justify-content: center;
+    }
+    .setting-group { display: flex; align-items: center; gap: 8px; }
+    .setting-label { font-size: 13px; color: #94a3b8; }
+    .setting-input {
+      width: 100px;
+      -webkit-appearance: none;
+      height: 6px;
+      border-radius: 3px;
+      background: #334155;
+      outline: none;
+    }
+    .setting-input::-webkit-slider-thumb {
+      -webkit-appearance: none;
+      width: 16px; height: 16px;
+      border-radius: 50%;
+      background: #38bdf8;
+      cursor: pointer;
+    }
+    .setting-val { font-size: 13px; color: #38bdf8; min-width: 28px; }
+ 
+    /* ── In-VR HUD ── */
+    #vr-hud {
+      position: fixed;
+      bottom: 20px; left: 50%;
+      transform: translateX(-50%);
+      z-index: 998;
+      background: rgba(15,23,42,.85);
+      padding: 10px 24px;
+      border-radius: 50px;
+      font-family: 'Segoe UI', system-ui, sans-serif;
+      color: #e2e8f0;
+      font-size: 16px;
+      display: none;
+      gap: 20px;
+      align-items: center;
+      backdrop-filter: blur(10px);
+    }
+    #vr-hud.visible { display: flex; }
+    .hud-timer { font-weight: 700; color: #38bdf8; font-variant-numeric: tabular-nums; }
+    .hud-exercise { color: #94a3b8; }
+    .hud-btn {
+      padding: 6px 16px;
+      border: none;
+      border-radius: 50px;
+      background: #38bdf8;
+      color: #0c4a6e;
+      font-weight: 600;
+      font-size: 13px;
+      cursor: pointer;
+    }
+    .hud-btn-stop { background: rgba(248,113,113,.3); color: #f87171; }
+ 
+    @media (max-width: 500px) {
+      .menu-grid { grid-template-columns: 1fr; }
+      .menu-title { font-size: 22px; }
+    }
+  </style>
+</head>
+<body>
+ 
+<!-- ══════════ 2D MENU ══════════ -->
+<div id="menu-overlay">
+  <div class="menu-title">VR Vestibular Rehabilitation</div>
+  <div class="menu-sub">Quest 3S &bull; Evidence-based exercises in immersive VR</div>
+  <div class="menu-disclaimer">
+    <strong>Important:</strong> Use under guidance of your healthcare provider. Remove the headset immediately if symptoms become severe. Start with short sessions (30–60s) at low speed.
+  </div>
+ 
+  <div class="menu-grid">
+    <div class="menu-card" onclick="startExercise('pursuit')">
+      <div class="menu-card-icon">&#128065;</div>
+      <div class="menu-card-title">Smooth Pursuit</div>
+      <div class="menu-card-desc">Follow a glowing orb as it floats through 3D space around you</div>
+    </div>
+    <div class="menu-card" onclick="startExercise('saccades')">
+      <div class="menu-card-icon">&#8644;</div>
+      <div class="menu-card-title">Saccades</div>
+      <div class="menu-card-desc">Snap your gaze to highlighted targets appearing around you</div>
+    </div>
+    <div class="menu-card" onclick="startExercise('gaze')">
+      <div class="menu-card-icon">&#127919;</div>
+      <div class="menu-card-title">Gaze Stabilization</div>
+      <div class="menu-card-desc">Lock eyes on a fixed target while the room moves around you</div>
+    </div>
+    <div class="menu-card" onclick="startExercise('motion')">
+      <div class="menu-card-icon">&#127744;</div>
+      <div class="menu-card-title">Motion Sensitivity</div>
+      <div class="menu-card-desc">Build tolerance as visual patterns flow past in all directions</div>
+    </div>
+    <div class="menu-card" onclick="startExercise('convergence')">
+      <div class="menu-card-icon">&#128308;</div>
+      <div class="menu-card-title">Convergence</div>
+      <div class="menu-card-desc">Track a target as it moves toward and away from you in depth</div>
+    </div>
+    <div class="menu-card" onclick="startExercise('circuit')">
+      <div class="menu-card-icon">&#9889;</div>
+      <div class="menu-card-title">Full Circuit</div>
+      <div class="menu-card-desc">All exercises in sequence with guided rest breaks</div>
+    </div>
+  </div>
+ 
+  <div class="menu-settings">
+    <div class="setting-group">
+      <span class="setting-label">Speed:</span>
+      <input type="range" class="setting-input" id="opt-speed" min="1" max="10" value="3">
+      <span class="setting-val" id="opt-speed-val">3</span>
+    </div>
+    <div class="setting-group">
+      <span class="setting-label">Duration:</span>
+      <input type="range" class="setting-input" id="opt-duration" min="30" max="180" step="15" value="60">
+      <span class="setting-val" id="opt-duration-val">60s</span>
+    </div>
+  </div>
+</div>
+ 
+<!-- ══════════ HUD ══════════ -->
+<div id="vr-hud">
+  <span class="hud-exercise" id="hud-name">Smooth Pursuit</span>
+  <span class="hud-timer" id="hud-timer">1:00</span>
+  <button class="hud-btn hud-btn-stop" onclick="stopExercise()">Stop</button>
+</div>
+ 
+<!-- ══════════ A-FRAME SCENE ══════════ -->
+<a-scene
+  vr-mode-ui="enabled: true"
+  renderer="antialias: true; colorManagement: true"
+  background="color: #0a0a1a"
+>
+  <!-- Camera -->
+  <a-entity id="rig" position="0 1.6 0">
+    <a-camera id="cam" look-controls="pointerLockEnabled: false"></a-camera>
+  </a-entity>
+ 
+  <!-- Environment: floor and ambient -->
+  <a-entity id="env-floor"
+    geometry="primitive: circle; radius: 20"
+    rotation="-90 0 0"
+    material="color: #111827; opacity: 0.8; side: double"
+    position="0 0 0">
+  </a-entity>
+ 
+  <!-- Subtle grid on floor -->
+  <a-entity id="env-grid"
+    geometry="primitive: plane; width: 40; height: 40"
+    rotation="-90 0 0"
+    position="0 0.01 0"
+    material="src: #gridTex; repeat: 20 20; transparent: true; opacity: 0.15; side: double">
+  </a-entity>
+ 
+  <!-- Ambient lighting -->
+  <a-light type="ambient" color="#334155" intensity="0.5"></a-light>
+  <a-light type="directional" color="#94a3b8" intensity="0.3" position="0 10 5"></a-light>
+ 
+  <!-- ── Exercise Objects Container ── -->
+  <a-entity id="exercise-objects"></a-entity>
+ 
+  <!-- ── Gaze Stabilization: Rotating Room ── -->
+  <a-entity id="rotating-room" visible="false">
+    <!-- Pillars in a circle -->
+    <a-entity id="room-pillars"></a-entity>
+    <!-- Floating particles -->
+    <a-entity id="room-particles"></a-entity>
+  </a-entity>
+ 
+  <!-- ── Visual Motion: Streaming Particles ── -->
+  <a-entity id="motion-field" visible="false">
+    <a-entity id="motion-particles"></a-entity>
+  </a-entity>
+ 
+  <!-- ── Fixed reference points (always visible during exercises) ── -->
+  <a-entity id="ref-points" visible="false">
+    <!-- 4 corner reference lights at distance -->
+    <a-sphere position="-8 3 -8" radius="0.08" material="color: #1e3a5f; emissive: #1e3a5f; emissiveIntensity: 0.3"></a-sphere>
+    <a-sphere position="8 3 -8" radius="0.08" material="color: #1e3a5f; emissive: #1e3a5f; emissiveIntensity: 0.3"></a-sphere>
+    <a-sphere position="-8 3 8" radius="0.08" material="color: #1e3a5f; emissive: #1e3a5f; emissiveIntensity: 0.3"></a-sphere>
+    <a-sphere position="8 3 8" radius="0.08" material="color: #1e3a5f; emissive: #1e3a5f; emissiveIntensity: 0.3"></a-sphere>
+  </a-entity>
+ 
+  <!-- ── In-VR Text Panels ── -->
+  <a-entity id="vr-text-panel" position="0 2.2 -3" visible="false">
+    <a-plane width="2.5" height="0.5" material="color: #0f172a; opacity: 0.85" ></a-plane>
+    <a-text id="vr-text-title" value="Exercise" align="center" position="0 0.1 0.01"
+            color="#38bdf8" width="2.2" font="roboto"></a-text>
+    <a-text id="vr-text-timer" value="1:00" align="center" position="0 -0.1 0.01"
+            color="#e2e8f0" width="3" font="roboto"></a-text>
+  </a-entity>
+ 
+  <!-- ── In-VR Rest Screen ── -->
+  <a-entity id="vr-rest-panel" position="0 1.6 -2.5" visible="false">
+    <a-plane width="3" height="1.5" material="color: #0f172a; opacity: 0.9"></a-plane>
+    <a-text value="Rest" align="center" position="0 0.35 0.01"
+            color="#22d3ee" width="4" font="roboto"></a-text>
+    <a-text id="vr-rest-timer" value="30" align="center" position="0 0 0.01"
+            color="#e2e8f0" width="5" font="roboto"></a-text>
+    <a-text value="Close your eyes and breathe slowly" align="center" position="0 -0.35 0.01"
+            color="#64748b" width="2.5" font="roboto"></a-text>
+  </a-entity>
+ 
+  <!-- Assets -->
+  <a-assets>
+    <canvas id="gridTex" width="64" height="64"></canvas>
+  </a-assets>
+ 
+</a-scene>
+ 
+<script>
+// Generate grid texture
+(function() {
+  const c = document.getElementById('gridTex');
+  const ctx = c.getContext('2d');
+  ctx.fillStyle = '#000';
+  ctx.fillRect(0, 0, 64, 64);
+  ctx.strokeStyle = '#334155';
+  ctx.lineWidth = 1;
+  ctx.strokeRect(0, 0, 64, 64);
+})();
+ 
+// ══════════════════════════════════════
+// STATE
+// ══════════════════════════════════════
+const ST = {
+  active: false,
+  exercise: null,
+  speed: 3,
+  duration: 60,
+  elapsed: 0,
+  paused: false,
+  timerInterval: null,
+  animFrame: null,
+  circuitIndex: 0,
+  circuitList: ['pursuit', 'saccades', 'gaze', 'convergence', 'motion'],
+  // exercise-specific
+  pursuitTarget: null,
+  saccadeTargets: [],
+  saccadeActive: 0,
+  saccadeTimer: 0,
+  gazeTarget: null,
+  convergenceTarget: null,
+  motionTime: 0,
+};
+ 
+// DOM refs
+const menuOverlay = document.getElementById('menu-overlay');
+const vrHud = document.getElementById('vr-hud');
+const hudName = document.getElementById('hud-name');
+const hudTimer = document.getElementById('hud-timer');
+const scene = document.querySelector('a-scene');
+const exerciseContainer = document.getElementById('exercise-objects');
+const rotatingRoom = document.getElementById('rotating-room');
+const motionField = document.getElementById('motion-field');
+const refPoints = document.getElementById('ref-points');
+const vrTextPanel = document.getElementById('vr-text-panel');
+const vrTextTitle = document.getElementById('vr-text-title');
+const vrTextTimer = document.getElementById('vr-text-timer');
+const vrRestPanel = document.getElementById('vr-rest-panel');
+const vrRestTimer = document.getElementById('vr-rest-timer');
+ 
+// Settings sliders
+document.getElementById('opt-speed').addEventListener('input', function() {
+  ST.speed = +this.value;
+  document.getElementById('opt-speed-val').textContent = ST.speed;
+});
+document.getElementById('opt-duration').addEventListener('input', function() {
+  ST.duration = +this.value;
+  document.getElementById('opt-duration-val').textContent = ST.duration + 's';
+});
+ 
+// ══════════════════════════════════════
+// EXERCISE NAMES
+// ══════════════════════════════════════
+const NAMES = {
+  pursuit: 'Smooth Pursuit',
+  saccades: 'Saccades',
+  gaze: 'Gaze Stabilization',
+  motion: 'Motion Sensitivity',
+  convergence: 'Convergence',
+  circuit: 'Full Circuit',
+};
+ 
+// ══════════════════════════════════════
+// START / STOP
+// ══════════════════════════════════════
+function startExercise(type) {
+  ST.exercise = type;
+  ST.active = true;
+  ST.elapsed = 0;
+  ST.circuitIndex = 0;
+ 
+  menuOverlay.classList.add('hidden');
+  vrHud.classList.add('visible');
+  refPoints.setAttribute('visible', true);
+  vrTextPanel.setAttribute('visible', true);
+ 
+  if (type === 'circuit') {
+    launchSingleExercise(ST.circuitList[0]);
+  } else {
+    launchSingleExercise(type);
+  }
+ 
+  startTimer();
+}
+ 
+function launchSingleExercise(type) {
+  clearExerciseObjects();
+  rotatingRoom.setAttribute('visible', false);
+  motionField.setAttribute('visible', false);
+ 
+  const name = NAMES[type] || type;
+  hudName.textContent = name;
+  vrTextTitle.setAttribute('value', name);
+ 
+  if (type === 'pursuit') setupPursuit();
+  else if (type === 'saccades') setupSaccades();
+  else if (type === 'gaze') setupGaze();
+  else if (type === 'motion') setupMotion();
+  else if (type === 'convergence') setupConvergence();
+ 
+  if (ST.animFrame) cancelAnimationFrame(ST.animFrame);
+  lastT = performance.now();
+  animate();
+}
+ 
+function stopExercise() {
+  ST.active = false;
+  if (ST.timerInterval) { clearInterval(ST.timerInterval); ST.timerInterval = null; }
+  if (ST.animFrame) { cancelAnimationFrame(ST.animFrame); ST.animFrame = null; }
+ 
+  clearExerciseObjects();
+  rotatingRoom.setAttribute('visible', false);
+  motionField.setAttribute('visible', false);
+  refPoints.setAttribute('visible', false);
+  vrTextPanel.setAttribute('visible', false);
+  vrRestPanel.setAttribute('visible', false);
+ 
+  vrHud.classList.remove('visible');
+  menuOverlay.classList.remove('hidden');
+}
+ 
+function clearExerciseObjects() {
+  while (exerciseContainer.firstChild) {
+    exerciseContainer.removeChild(exerciseContainer.firstChild);
+  }
+  // Clear room pillars/particles
+  const rp = document.getElementById('room-pillars');
+  while (rp.firstChild) rp.removeChild(rp.firstChild);
+  const rprt = document.getElementById('room-particles');
+  while (rprt.firstChild) rprt.removeChild(rprt.firstChild);
+  const mp = document.getElementById('motion-particles');
+  while (mp.firstChild) mp.removeChild(mp.firstChild);
+}
+ 
+// ══════════════════════════════════════
+// TIMER
+// ══════════════════════════════════════
+function startTimer() {
+  ST.elapsed = 0;
+  updateTimerDisplay();
+  ST.timerInterval = setInterval(() => {
+    if (!ST.active) return;
+    ST.elapsed++;
+    updateTimerDisplay();
+    if (ST.elapsed >= ST.duration) {
+      clearInterval(ST.timerInterval);
+      ST.timerInterval = null;
+      if (ST.exercise === 'circuit') {
+        nextCircuitPhase();
+      } else {
+        stopExercise();
+      }
+    }
+  }, 1000);
+}
+ 
+function updateTimerDisplay() {
+  const rem = Math.max(0, ST.duration - ST.elapsed);
+  const m = Math.floor(rem / 60);
+  const s = rem % 60;
+  const str = m + ':' + String(s).padStart(2, '0');
+  hudTimer.textContent = str;
+  vrTextTimer.setAttribute('value', str);
+}
+ 
+// ══════════════════════════════════════
+// CIRCUIT MODE
+// ══════════════════════════════════════
+function nextCircuitPhase() {
+  ST.circuitIndex++;
+  if (ST.circuitIndex >= ST.circuitList.length) {
+    stopExercise();
+    return;
+  }
+  // Rest break
+  cancelAnimationFrame(ST.animFrame);
+  ST.animFrame = null;
+  clearExerciseObjects();
+  rotatingRoom.setAttribute('visible', false);
+  motionField.setAttribute('visible', false);
+  vrRestPanel.setAttribute('visible', true);
+ 
+  let restSec = 30;
+  vrRestTimer.setAttribute('value', String(restSec));
+  const restInt = setInterval(() => {
+    restSec--;
+    vrRestTimer.setAttribute('value', String(restSec));
+    if (restSec <= 0) {
+      clearInterval(restInt);
+      vrRestPanel.setAttribute('visible', false);
+      launchSingleExercise(ST.circuitList[ST.circuitIndex]);
+      ST.elapsed = 0;
+      startTimer();
+    }
+  }, 1000);
+}
+ 
+// ══════════════════════════════════════
+// HELPER: create entity
+// ══════════════════════════════════════
+function makeEntity(tag, attrs, parent) {
+  const el = document.createElement(tag || 'a-entity');
+  for (const [k, v] of Object.entries(attrs || {})) {
+    el.setAttribute(k, v);
+  }
+  (parent || exerciseContainer).appendChild(el);
+  return el;
+}
+ 
+// ══════════════════════════════════════
+// SMOOTH PURSUIT
+// ══════════════════════════════════════
+function setupPursuit() {
+  ST.pursuitTarget = makeEntity('a-sphere', {
+    radius: 0.15,
+    material: 'color: #38bdf8; emissive: #38bdf8; emissiveIntensity: 0.6',
+    position: '0 1.6 -2',
+  });
+  // Glow
+  makeEntity('a-sphere', {
+    radius: 0.25,
+    material: 'color: #38bdf8; emissive: #38bdf8; emissiveIntensity: 0.2; opacity: 0.3; transparent: true',
+    position: '0 1.6 -2',
+    class: 'pursuit-glow',
+  });
+  // Trail particles (small static spheres we'll reposition)
+  ST.pursuitTrail = [];
+  for (let i = 0; i < 12; i++) {
+    const t = makeEntity('a-sphere', {
+      radius: 0.04,
+      material: `color: #38bdf8; opacity: ${0.05 + i * 0.03}; transparent: true; emissive: #38bdf8; emissiveIntensity: 0.2`,
+      position: '0 1.6 -2',
+    });
+    ST.pursuitTrail.push(t);
+  }
+  ST.pursuitT = 0;
+}
+ 
+// ══════════════════════════════════════
+// SACCADES
+// ══════════════════════════════════════
+function setupSaccades() {
+  ST.saccadeTargets = [];
+  const positions = [
+    { x: -2, y: 1.6, z: -3 },
+    { x: 2, y: 1.6, z: -3 },
+    { x: 0, y: 3, z: -3 },
+    { x: 0, y: 0.5, z: -3 },
+    { x: -1.5, y: 2.5, z: -3 },
+    { x: 1.5, y: 0.8, z: -3 },
+  ];
+  positions.forEach((p, i) => {
+    const el = makeEntity('a-sphere', {
+      radius: 0.12,
+      material: 'color: #334155; emissive: #334155; emissiveIntensity: 0.2',
+      position: `${p.x} ${p.y} ${p.z}`,
+    });
+    ST.saccadeTargets.push({ el, pos: p });
+  });
+  ST.saccadeActive = 0;
+  ST.saccadeTimer = 0;
+  highlightSaccade(0);
+}
+ 
+function highlightSaccade(idx) {
+  ST.saccadeTargets.forEach((t, i) => {
+    if (i === idx) {
+      t.el.setAttribute('material', 'color: #22d3ee; emissive: #22d3ee; emissiveIntensity: 0.8');
+      t.el.setAttribute('radius', 0.18);
+    } else {
+      t.el.setAttribute('material', 'color: #334155; emissive: #334155; emissiveIntensity: 0.2');
+      t.el.setAttribute('radius', 0.10);
+    }
+  });
+}
+ 
+// ══════════════════════════════════════
+// GAZE STABILIZATION
+// ══════════════════════════════════════
+function setupGaze() {
+  // Central fixation target — stays fixed in world
+  ST.gazeTarget = makeEntity('a-sphere', {
+    radius: 0.12,
+    material: 'color: #f87171; emissive: #f87171; emissiveIntensity: 0.7',
+    position: '0 1.6 -2.5',
+  });
+  // Inner dot
+  makeEntity('a-sphere', {
+    radius: 0.05,
+    material: 'color: #ffffff; emissive: #ffffff; emissiveIntensity: 0.5',
+    position: '0 1.6 -2.49',
+  });
+ 
+  // Build rotating room
+  const pillars = document.getElementById('room-pillars');
+  const particles = document.getElementById('room-particles');
+  for (let i = 0; i < 12; i++) {
+    const angle = (i / 12) * Math.PI * 2;
+    const x = Math.cos(angle) * 5;
+    const z = Math.sin(angle) * 5;
+    const pillar = document.createElement('a-box');
+    pillar.setAttribute('width', 0.3);
+    pillar.setAttribute('height', 4);
+    pillar.setAttribute('depth', 0.3);
+    pillar.setAttribute('position', `${x} 2 ${z}`);
+    pillar.setAttribute('material', `color: hsl(${200 + i*10}, 60%, 30%); emissive: hsl(${200 + i*10}, 60%, 15%); emissiveIntensity: 0.3`);
+    pillars.appendChild(pillar);
+  }
+  for (let i = 0; i < 30; i++) {
+    const p = document.createElement('a-sphere');
+    const angle = Math.random() * Math.PI * 2;
+    const r = 3 + Math.random() * 4;
+    p.setAttribute('radius', 0.05 + Math.random() * 0.1);
+    p.setAttribute('position', `${Math.cos(angle)*r} ${0.5 + Math.random()*3} ${Math.sin(angle)*r}`);
+    p.setAttribute('material', `color: #38bdf8; emissive: #38bdf8; emissiveIntensity: 0.4; opacity: 0.5; transparent: true`);
+    particles.appendChild(p);
+  }
+  rotatingRoom.setAttribute('visible', true);
+  ST.gazeT = 0;
+}
+ 
+// ══════════════════════════════════════
+// VISUAL MOTION SENSITIVITY
+// ══════════════════════════════════════
+function setupMotion() {
+  const mp = document.getElementById('motion-particles');
+  // Create a field of particles streaming in a direction
+  ST.motionDots = [];
+  for (let i = 0; i < 80; i++) {
+    const p = document.createElement('a-sphere');
+    const x = (Math.random() - 0.5) * 12;
+    const y = Math.random() * 4;
+    const z = -2 + (Math.random() - 0.5) * 12;
+    p.setAttribute('radius', 0.04 + Math.random() * 0.06);
+    p.setAttribute('position', `${x} ${y} ${z}`);
+    p.setAttribute('material', `color: #22d3ee; emissive: #22d3ee; emissiveIntensity: 0.4; opacity: ${0.3 + Math.random()*0.4}; transparent: true`);
+    mp.appendChild(p);
+    ST.motionDots.push({
+      el: p,
+      x, y, z,
+      speedMult: 0.5 + Math.random() * 1.5,
+    });
+  }
+  // Vertical flowing bars
+  for (let i = 0; i < 8; i++) {
+    const bar = document.createElement('a-box');
+    const angle = (i / 8) * Math.PI * 2;
+    bar.setAttribute('width', 0.1);
+    bar.setAttribute('height', 5);
+    bar.setAttribute('depth', 0.1);
+    bar.setAttribute('position', `${Math.cos(angle)*6} 2.5 ${Math.sin(angle)*6}`);
+    bar.setAttribute('material', `color: #0ea5e9; emissive: #0ea5e9; emissiveIntensity: 0.15; opacity: 0.3; transparent: true`);
+    mp.appendChild(bar);
+  }
+ 
+  // Center fixation
+  makeEntity('a-sphere', {
+    radius: 0.1,
+    material: 'color: #fbbf24; emissive: #fbbf24; emissiveIntensity: 0.7',
+    position: '0 1.6 -2',
+  });
+  makeEntity('a-sphere', {
+    radius: 0.04,
+    material: 'color: #ffffff; emissive: #ffffff; emissiveIntensity: 0.5',
+    position: '0 1.6 -1.99',
+  });
+ 
+  motionField.setAttribute('visible', true);
+  ST.motionTime = 0;
+}
+ 
+// ══════════════════════════════════════
+// CONVERGENCE
+// ══════════════════════════════════════
+function setupConvergence() {
+  ST.convergenceTarget = makeEntity('a-sphere', {
+    radius: 0.12,
+    material: 'color: #4ade80; emissive: #4ade80; emissiveIntensity: 0.6',
+    position: '0 1.6 -2',
+  });
+  // Inner dot
+  ST.convergenceInner = makeEntity('a-sphere', {
+    radius: 0.04,
+    material: 'color: #ffffff; emissive: #ffffff; emissiveIntensity: 0.5',
+    position: '0 1.6 -2',
+  });
+  // Depth reference rings
+  for (let d = 1; d <= 4; d++) {
+    makeEntity('a-ring', {
+      'radius-inner': 0.48 + d * 0.01,
+      'radius-outer': 0.5 + d * 0.01,
+      position: `0 1.6 ${-d}`,
+      material: `color: #1e3a5f; opacity: 0.15; transparent: true; side: double`,
+      rotation: '0 0 0',
+    });
+  }
+  ST.convergenceT = 0;
+}
+ 
+// ══════════════════════════════════════
+// ANIMATION LOOP
+// ══════════════════════════════════════
+let lastT = 0;
+ 
+function animate(timestamp) {
+  if (!ST.active) return;
+  if (!timestamp) timestamp = performance.now();
+  const dt = Math.min((timestamp - lastT) / 1000, 0.1);
+  lastT = timestamp;
+ 
+  const currentEx = ST.exercise === 'circuit' ? ST.circuitList[ST.circuitIndex] : ST.exercise;
+ 
+  if (currentEx === 'pursuit') animPursuit(dt);
+  else if (currentEx === 'saccades') animSaccades(dt);
+  else if (currentEx === 'gaze') animGaze(dt);
+  else if (currentEx === 'motion') animMotion(dt);
+  else if (currentEx === 'convergence') animConvergence(dt);
+ 
+  ST.animFrame = requestAnimationFrame(animate);
+}
+ 
+// ── Pursuit animation ──
+function animPursuit(dt) {
+  const spd = ST.speed * 0.25;
+  ST.pursuitT += dt * spd;
+  const t = ST.pursuitT;
+ 
+  // 3D Lissajous path
+  const x = Math.sin(t * 0.7) * 2;
+  const y = 1.6 + Math.sin(t * 1.1 + 0.5) * 1;
+  const z = -2.5 + Math.sin(t * 0.5 + 1.2) * 1;
+ 
+  ST.pursuitTarget.setAttribute('position', `${x} ${y} ${z}`);
+ 
+  // Update glow
+  const glow = exerciseContainer.querySelector('.pursuit-glow');
+  if (glow) glow.setAttribute('position', `${x} ${y} ${z}`);
+ 
+  // Trail
+  if (ST.pursuitTrail) {
+    for (let i = ST.pursuitTrail.length - 1; i > 0; i--) {
+      const prev = ST.pursuitTrail[i-1].getAttribute('position');
+      ST.pursuitTrail[i].setAttribute('position', prev);
+    }
+    ST.pursuitTrail[0].setAttribute('position', `${x} ${y} ${z}`);
+  }
+}
+ 
+// ── Saccades animation ──
+function animSaccades(dt) {
+  ST.saccadeTimer += dt;
+  const interval = Math.max(0.5, 2.5 - ST.speed * 0.2);
+ 
+  if (ST.saccadeTimer >= interval) {
+    ST.saccadeTimer = 0;
+    ST.saccadeActive = (ST.saccadeActive + 1) % ST.saccadeTargets.length;
+    highlightSaccade(ST.saccadeActive);
+  }
+}
+ 
+// ── Gaze stabilization animation ──
+function animGaze(dt) {
+  const spd = ST.speed * 0.3;
+  ST.gazeT += dt * spd;
+  // Rotate the room around the user
+  rotatingRoom.setAttribute('rotation', `0 ${ST.gazeT * 30} 0`);
+}
+ 
+// ── Motion sensitivity animation ──
+function animMotion(dt) {
+  const spd = ST.speed * 0.5;
+  ST.motionTime += dt * spd;
+ 
+  // Move dots in a streaming pattern
+  if (ST.motionDots) {
+    ST.motionDots.forEach(d => {
+      d.x += dt * spd * d.speedMult * 2;
+      // Wrap around
+      if (d.x > 6) d.x = -6;
+      d.el.setAttribute('position', `${d.x} ${d.y} ${d.z}`);
+    });
+  }
+ 
+  // Rotate the whole motion field slowly
+  motionField.setAttribute('rotation', `0 ${ST.motionTime * 15} 0`);
+}
+ 
+// ── Convergence animation ──
+function animConvergence(dt) {
+  const spd = ST.speed * 0.3;
+  ST.convergenceT += dt * spd;
+ 
+  // Move target along Z axis (toward/away from user)
+  const phase = Math.sin(ST.convergenceT);
+  const z = -1 + phase * -2; // oscillates between -1 (close) and -3 (far)
+  const scale = 1 + (1 - (phase * 0.5 + 0.5)) * 0.5; // slightly bigger when closer for realism
+ 
+  ST.convergenceTarget.setAttribute('position', `0 1.6 ${z}`);
+  ST.convergenceTarget.setAttribute('scale', `${scale} ${scale} ${scale}`);
+  if (ST.convergenceInner) {
+    ST.convergenceInner.setAttribute('position', `0 1.6 ${z + 0.01}`);
+  }
+}
+ 
+</script>
+</body>
+</html>
+ 
